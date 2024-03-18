@@ -1,4 +1,3 @@
-print("hi ali taha")
 import numpy as np
 import random
 import pygame
@@ -44,6 +43,8 @@ def get_next_open_row(board, col):
 
 def print_board(board):
     print(np.flip(board, 0))
+
+
 
 
 def winning_move(board, piece):
@@ -95,6 +96,142 @@ def draw_board(board):
                 int(c * SQUARESIZE + SQUARESIZE / 2), height - int(r * SQUARESIZE + SQUARESIZE / 2)), RADIUS)
     pygame.display.update()
 
+def isFull(board): 
+    if 0 not in board[ROW_COUNT-1]:
+        return True
+    return False
+
+def CalculateUtilityPiece(board,piece):
+    score = 0
+    row_indices = []
+    col_indices = []
+    pos_diagonal_indices = []
+    neg_diagonal_indices = []
+
+    for connectNum in range(7,3,-1):
+         # Check horizontal locations for win
+        
+        print(f'connnectNum = {connectNum}')
+        
+        for c in range(COLUMN_COUNT - connectNum + 1):
+            for r in range(ROW_COUNT):
+                if r in row_indices:
+                    continue
+                temp = 0
+                connect = True
+                while(temp < connectNum):
+                    if board[r][c + temp] == piece:
+                        connect = connect and True
+                    else:
+                        connect = False
+                        break
+                    temp += 1
+
+                #print(connect)
+                if connect:
+                    score += connectNum - 3
+                    row_indices.append(r)
+                #print(f'score = {score}')
+            # Check vertical locations for win
+        if connectNum < 7:
+            for c in range(COLUMN_COUNT):
+                if  connectNum == 7:
+                    break
+                if c in col_indices:
+                        continue
+                for r in range(ROW_COUNT  - connectNum + 1):
+                    temp = 0
+                    connect = True
+                    while(temp < connectNum):
+                        if board[r + temp][c] == piece:
+                            connect = connect and True
+                        else:
+                            connect = False
+                            break
+                        temp += 1
+
+                    #print(connect)
+                    if connect:
+                        score += connectNum - 3
+                        col_indices.append(c)
+
+            # Check positively sloped diaganols
+            for c in range(COLUMN_COUNT - connectNum + 1):
+                for r in range(ROW_COUNT - connectNum + 1):
+                    if r + c in pos_diagonal_indices:
+                        continue
+                    else:
+                        temp = 0
+                        connect = True
+                        while(temp < connectNum):
+                            if board[r + temp][c + temp] == piece:
+                                connect = connect and True
+                            else:
+                                connect = False
+                                break
+                            temp += 1
+
+                        if connect:
+                            score += connectNum - 3
+                            pos_diagonal_indices.append(r+c)
+                        # if connectNum == 6:
+                        #     score -= 7 # 2*2 + 1*3
+                        # elif connectNum == 5:
+                        #     score -= 2 # 2*1
+            print(pos_diagonal_indices)
+            # Check negatively sloped diaganols
+            for c in range(COLUMN_COUNT - connectNum + 1):
+                for r in range(ROW_COUNT - connectNum, ROW_COUNT):    
+                    if r + c in neg_diagonal_indices:
+                        continue           
+                    else:
+                        temp = 0
+                        connect = True
+                        while(temp < connectNum):
+                            if board[r - temp][c + temp] == piece:
+                                connect = connect and True
+                            else:
+                                connect = False
+                                break
+                            temp += 1
+
+                        if connect:
+                            score += connectNum - 3
+                            neg_diagonal_indices.append(r+c)
+                            # if connectNum == 6:
+                            #     score -= 7
+                            # elif connectNum == 5:
+                            #     score -= 2
+                            
+                            
+
+            # for c in range(COLUMN_COUNT - 3):
+            #     for r in range(3, ROW_COUNT):
+            #         if board[r][c] == piece and board[r - 1][c + 1] == piece and board[r - 2][c + 2] == piece and board[r - 3][
+            #             c + 3] == piece:
+            #             return score
+
+    return score
+
+def minimax(board):
+    #check if terminal node
+    board = [[1,1,1,1,1,1,1],
+             [1,2,2,2,1,1,2],
+             [1,1,1,1,1,1,1],
+             [1,1,1,1,1,1,1],
+             [1,1,1,2,2,2,2],
+             [1,1,1,1,1,1,1]]
+    
+    if isFull(board):
+        #print_board(board)
+        print(board)
+        PLAYER_Score = CalculateUtilityPiece(board,PLAYER_PIECE)
+        AIScore = CalculateUtilityPiece(board,AI_PIECE)
+        score = PLAYER_Score - AIScore   
+        print(f'player score = {PLAYER_Score}')
+        print(f'AI score = {AIScore}')
+        print(f'Total score = {score}')
+
 
 board = create_board()
 print_board(board)
@@ -118,7 +255,7 @@ pygame.display.update()
 myfont = pygame.font.SysFont("monospace", 75)
 
 turn = random.randint(PLAYER, AI)
-
+#minimax(board)
 while not game_over:
 
     for event in pygame.event.get():
@@ -149,11 +286,7 @@ while not game_over:
                     if winning_move(board, PLAYER_PIECE):
                         label = myfont.render("Player 1 wins!!", 1, RED)
                         screen.blit(label, (40, 10))
-                        game_over = True
-
-                    
-
-                  
+                        game_over = True     
 
             # # Ask for Player 2 Input
             if turn == AI and not game_over:
@@ -173,6 +306,12 @@ while not game_over:
             turn += 1
             turn = turn % 2
 
+            
+            if isFull(board) == True:
+                label = myfont.render("Tie!!", 2, BLUE)
+                screen.blit(label, (40, 10))
+                game_over = True
+            
             print_board(board)
             draw_board(board)
     if game_over:
