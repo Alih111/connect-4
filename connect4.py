@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 import random
 import pygame
@@ -12,7 +14,7 @@ YELLOW = (255, 255, 0)
 
 ROW_COUNT = 6
 COLUMN_COUNT = 7
-
+DEPTH=3
 PLAYER = 0
 AI = 1
 
@@ -21,7 +23,17 @@ PLAYER_PIECE = 1
 AI_PIECE = 2
 
 WINDOW_LENGTH = 4
+def stringTo2d(string):
+    array_2d=[[]for i in range(ROW_COUNT)]
+    j=0
+    for i in range(COLUMN_COUNT*ROW_COUNT):
+        if (i % 7 == 0 and i != 0):
+            j += 1
+        array_2d[j].append(int(string[i]))
 
+    return array_2d
+
+zeros_string = "0" * 42
 
 def create_board():
     board = np.zeros((ROW_COUNT, COLUMN_COUNT))
@@ -158,7 +170,10 @@ def CalculateUtilityPiece(board,piece):
                         length = 3
                         neg_indices.append(r+c)
     return score
-
+def evaluation(board):
+    if board[0][2]==2:
+        return 2
+    return 1
 
 def generateChildren(board,piece):
     children = []
@@ -168,61 +183,178 @@ def generateChildren(board,piece):
             row = get_next_open_row(tempBoard,col)
             children.append(drop_piece(tempBoard,row,col,piece))
     return children
+def expectiMinMax(alpha, beta, depth, board, player):
+    score=0
+    a=copy.deepcopy(board)
+    while(1):
+        choices = ['A', 'B', 'C']
+        probabilities = [0.2, 0.6, 0.2]  # Probabilities must sum up to 1
+        chosen = random.choices(choices, weights=probabilities, k=1)[0]
+        if(chosen=='A'):
+            if(is_valid_location(a, 0)):
+               r= get_next_open_row(a, 0)
+               drop_piece(a, r, 0, AI_PIECE)
+               break
+        elif(chosen=='C'):
+            if (is_valid_location(a, COLUMN_COUNT-1)):
+                r = get_next_open_row(a, COLUMN_COUNT-1)
+                drop_piece(a, r, COLUMN_COUNT-1, AI_PIECE)
+                break
+        else:
+            score, a = minMaxAlphaBeta(alpha, beta, depth, board, player)
+            break
+    return score,a
 
-def maximize(board):
-    print('In maximize')
-    print_board(board)
+
+def minMax(alpha, beta, depth, board, player):
     if isFull(board):
-        PLAYER_Score = CalculateUtilityPiece(board,PLAYER_PIECE)
-        AIScore = CalculateUtilityPiece(board,AI_PIECE)
-        score = PLAYER_Score - AIScore   
-        print(f'player score = {PLAYER_Score}')
-        print(f'AI score = {AIScore}')
-        print(f'Total score = {score}')
-        return None,score
-    else:
-        maxChild = None
+        PLAYER_Score = CalculateUtilityPiece(board, PLAYER_PIECE)
+        AIScore = CalculateUtilityPiece(board, AI_PIECE)
+        score = AIScore - PLAYER_Score
+        return score, board  # Return score and board
+
+    if depth == 0:
+        return evaluation(board), board
+
+    if player == 1:  # maximizing player
         maxUtility = -float('inf')
-        children = generateChildren(board,PLAYER_PIECE)
+        maxChild = None  # Keep track of the best child board
+        children = generateChildren(board, AI_PIECE)
         for child in children:
-            print_board(child)
-            redudant_child,utility = minimize(child)
+            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER)
             if utility > maxUtility:
-                maxChild = child
                 maxUtility = utility
-        return maxChild,maxUtility
+                maxChild = child  # Update the best child board
+            if alpha < maxUtility:
+                alpha = maxUtility
+        return maxUtility, maxChild  # Return the best utility and its corresponding board
 
-
-def minimize(board):
-    #check if terminal node
-    print('In minimize')
-    print_board(board)
-    if isFull(board):
-        PLAYER_Score = CalculateUtilityPiece(board,PLAYER_PIECE)
-        AIScore = CalculateUtilityPiece(board,AI_PIECE)
-        score = PLAYER_Score - AIScore   
-        print(f'player score = {PLAYER_Score}')
-        print(f'AI score = {AIScore}')
-        print(f'Total score = {score}')
-        return None,score
     else:
-        minChild = None
         minUtility = float('inf')
-        children = generateChildren(board,AI_PIECE)
+        minChild = None  # Keep track of the best child board
+        children = generateChildren(board, PLAYER_PIECE)
         for child in children:
-            redudant_child,utility = maximize(child)
+            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI)
             if utility < minUtility:
-                minChild = child
                 minUtility = utility
-        return minChild,minUtility
+                minChild = child  # Update the best child board
+            if minUtility < beta:
+                beta = minUtility
+        return minUtility, minChild
+def minMaxAlphaBeta(alpha, beta, depth, board, player):
+    if isFull(board):
+        PLAYER_Score = CalculateUtilityPiece(board, PLAYER_PIECE)
+        AIScore = CalculateUtilityPiece(board, AI_PIECE)
+        score = AIScore - PLAYER_Score
+        return score, board  # Return score and board
+
+    if depth == 0:
+        return evaluation(board), board
+
+    if player == 1:  # maximizing player
+        maxUtility = -float('inf')
+        maxChild = None  # Keep track of the best child board
+        children = generateChildren(board, AI_PIECE)
+        for child in children:
+            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER)
+            if utility > maxUtility:
+                maxUtility = utility
+                maxChild = child  # Update the best child board
+            if alpha < maxUtility:
+                alpha = maxUtility
+            if alpha >= beta:
+                break
+        return maxUtility, maxChild  # Return the best utility and its corresponding board
+
+    else:
+        minUtility = float('inf')
+        minChild = None  # Keep track of the best child board
+        children = generateChildren(board, PLAYER_PIECE)
+        for child in children:
+            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI)
+            if utility < minUtility:
+                minUtility = utility
+                minChild = child  # Update the best child board
+            if minUtility < beta:
+                beta = minUtility
+            if alpha >= beta:
+                break
+        return minUtility, minChild
 
 
-board = create_board()
-print_board(board)
-game_over = False
+
 
 pygame.init()
 
+
+width = COLUMN_COUNT * 100
+height = (ROW_COUNT + 1) * 100
+
+size = (width, height)
+
+RADIUS = int(100 / 2 - 5)
+pygame.display.set_caption("welcome")
+
+# Load the background image
+
+screen = pygame.display.set_mode(size)
+pygame.display.update()
+
+myfont = pygame.font.SysFont("monospace", 75)
+
+
+
+
+button_font = pygame.font.SysFont("Arial", 30)
+func=None
+while True:
+        screen.fill((0, 0, 0))
+        flag=False
+        # Draw menu buttons
+        start_button = pygame.Rect(250, 200, 200, 50)
+        options_button = pygame.Rect(250, 280, 200, 50)
+        exit_button = pygame.Rect(250, 360, 200, 50)
+
+        pygame.draw.rect(screen, (255, 0, 0), start_button)
+        pygame.draw.rect(screen, (0, 255, 0), options_button)
+        pygame.draw.rect(screen, (0, 0, 255), exit_button)
+
+        start_text = button_font.render("alpha beta", True, (0, 0, 0))
+        options_text = button_font.render("no alpha beta", True, (0, 0, 0))
+        exit_text = button_font.render("expectiminimax", True, (0, 0, 0))
+
+        screen.blit(start_text, (270, 210))
+        screen.blit(options_text, (260, 290))
+        screen.blit(exit_text, (250, 370))
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                pygame.quit()
+                sys.exit()
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                mouse_pos = event.pos
+
+                if start_button.collidepoint(mouse_pos):
+                    flag=True
+                    func=minMaxAlphaBeta
+                    break
+                elif options_button.collidepoint(mouse_pos):
+                    flag = True
+                    func=minMax
+                    break
+                elif exit_button.collidepoint(mouse_pos):
+                    flag = True
+                    func=expectiMinMax
+                    break
+        if flag :
+            break
+        pygame.display.update()
+
+board = create_board()
+game_over = False
+
+pygame.init()
+pygame.display.set_caption("connect 4")
 SQUARESIZE = 100
 
 width = COLUMN_COUNT * SQUARESIZE
@@ -235,29 +367,7 @@ RADIUS = int(SQUARESIZE / 2 - 5)
 screen = pygame.display.set_mode(size)
 draw_board(board)
 pygame.display.update()
-
-myfont = pygame.font.SysFont("monospace", 75)
-
 turn = random.randint(PLAYER, AI)
-game_over = True
-board = [[1,1,1,1,1,1,1],
-         [1,1,1,2,1,1,2],
-         [1,2,1,1,1,1,2],
-         [2,1,1,1,1,1,1],
-         [2,1,1,2,1,1,2],
-         [1,1,1,1,1,1,1]]
-
-print_board(board)
-x = CalculateUtilityPiece(board,AI_PIECE)
-print(f'AI score = {x}')
-print('-------------------------------->')
-print(f'Player score = {CalculateUtilityPiece(board,PLAYER_PIECE)}')
-#child,score = minimize(board)
-# if child != None:
-#     print('best child:')
-#     print_board(child)
-# print(score)
-#print(isFull(board))
 while not game_over:
 
     for event in pygame.event.get():
@@ -269,53 +379,35 @@ while not game_over:
             posx = event.pos[0]
             if turn == PLAYER:
                 pygame.draw.circle(screen, RED, (posx, int(SQUARESIZE / 2)), RADIUS)
-            else:
-                pygame.draw.circle(screen, YELLOW, (posx, int(SQUARESIZE / 2)), RADIUS) 
         pygame.display.update()
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             pygame.draw.rect(screen, BLACK, (0, 0, width, SQUARESIZE))
             # print(event.pos)
             # Ask for Player 1 Input
-            if turn == PLAYER:
+            if turn == PLAYER and not game_over:
                 posx = event.pos[0]
                 col = int(math.floor(posx / SQUARESIZE))
 
                 if is_valid_location(board, col):
                     row = get_next_open_row(board, col)
                     drop_piece(board, row, col, PLAYER_PIECE)
-
-                    if winning_move(board, PLAYER_PIECE):
-                        label = myfont.render("Player 1 wins!!", 1, RED)
-                        screen.blit(label, (40, 10))
-                        game_over = True     
-
+                    draw_board(board)
+                    turn = AI
             # # Ask for Player 2 Input
-            if turn == AI and not game_over:
+        if turn == AI and not game_over:
+            time.sleep(1)
+            sc,a=func(float('-inf'),float('inf'),DEPTH,board,AI)
+            board=a
+            draw_board(board)
+            turn =PLAYER
 
-                posx = event.pos[0]
-                col = int(math.floor(posx / SQUARESIZE))
 
 
-                if is_valid_location(board, col): 
-                    row = get_next_open_row(board, col)
-                    drop_piece(board, row, col, AI_PIECE)
 
-                    if winning_move(board, AI_PIECE):
-                        label = myfont.render("AI wins!!", 2, YELLOW)
-                        screen.blit(label, (40, 10))
-                        game_over = True
-
-            turn += 1
-            turn = turn % 2
-
-            
-            if isFull(board) == True:
+        if isFull(board) == True:
                 label = myfont.render("Tie!!", 2, BLUE)
                 screen.blit(label, (40, 10))
                 game_over = True
-            
-            print_board(board)
-            draw_board(board)
     if game_over:
         pygame.time.wait(3000)

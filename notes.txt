@@ -1,0 +1,11 @@
+one player always choose max
+one player always choose minimum
+alpha is max start with negative infinity
+for mamizing player 
+if beta <= alpha
+// brune
+
+
+beta is min start with infinty
+if beta <= alpha 
+//brune
