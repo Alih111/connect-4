@@ -105,7 +105,6 @@ def isFull(board):
 
 def CalculateUtilityPiece(board,piece):
     score = 0
-    connects = []
     # Check horizontal locations for win
     for r in range(ROW_COUNT):      
         for c in range(COLUMN_COUNT - 6):
@@ -114,8 +113,7 @@ def CalculateUtilityPiece(board,piece):
                 length += 1
             c += length
             if length > 3:
-                    connects.append(length)
-    print(connects)
+                    score += length - 3
 
     # Check vertical locations for win
     for r in range(ROW_COUNT - 5):      
@@ -125,8 +123,7 @@ def CalculateUtilityPiece(board,piece):
                 length += 1
             r += length
             if length > 3:
-                    connects.append(length)
-    print(connects)
+                    score += length - 3
 
     # Check positively sloped diaganols
     pos_indcies = []
@@ -160,11 +157,6 @@ def CalculateUtilityPiece(board,piece):
                         score += length - 3
                         length = 3
                         neg_indices.append(r+c)
-            
-    print(connects)
-                    
-    for i in range(0,len(connects)): 
-        score += connects[i] - 3
     return score
 
 
