@@ -122,30 +122,29 @@ def isFull(board):
 def CalculateUtilityPiece(board, piece):
     score = 0
     # Check horizontal locations for win
-    finished_row = -1
+    finished_rows = []
     for r in range(ROW_COUNT):
         for c in range(COLUMN_COUNT - 3):
-            if r == finished_row:
+            if r in finished_rows:
                 continue
             else:
                 for length in range(7,3,-1):
-                    if all(r != finished_row and c + i < 7 and board[r][c + i] == piece for i
+                    if all(r not in finished_rows and c + i < 7 and board[r][c + i] == piece for i
                                 in range(length)):
                         score += length - 3
-                        finished_row = r
+                        finished_rows.append(r)
     # Check vertical locations for win
-    finished_col = -1
+    finished_cols = []
     for r in range(ROW_COUNT - 3):
         for c in range(COLUMN_COUNT):
-            if c == finished_col:
+            if c in finished_cols:
                 continue
             else:
                 for length in range(7,3,-1):
-                    if all(c != finished_col and r + i  < 6 and board[r + i][c] == piece for i
+                    if all(c not in finished_cols and r + i  < 6 and board[r + i][c] == piece for i
                                 in range(length)):
                         score += length - 3
-                        finished_col = c                    
-
+                        finished_cols.append(c)   
     # Check positively sloped diaganols
     pos_indcies = []
     for r in range(ROW_COUNT - 3):
@@ -596,20 +595,30 @@ while not game_over:
             # # Ask for Player 2 Input
         if turn == AI and not game_over:
             time.sleep(1)
-
             sc, a = func(float('-inf'), float('inf'), DEPTH, board, AI)
             tree[0].append((sc,None))
             #draw tree
-            drawTREE()
-            print(f"ai score ={CalculateUtilityPiece(board,AI_PIECE)} human score = {CalculateUtilityPiece(board,PLAYER_PIECE)}")
+            #drawTREE()
+
             tree = [[] for i in range(DEPTH + 1)]
             board = a
             draw_board(board)
+            AI_score = CalculateUtilityPiece(board,AI_PIECE)
+            Player_score = CalculateUtilityPiece(board,PLAYER_PIECE)
+            print(f"ai score ={AI_score} human score = {Player_score}")
             turn = PLAYER
 
-        if isFull(board) == True:
-            label = myfont.render("Tie!!", 2, BLUE)
-            screen.blit(label, (40, 10))
+        if isFull(board) == True:   
+            if AI_score == Player_score:
+                label = myfont.render("Tie!!", 2, BLUE)
+                screen.blit(label, (40, 10))
+            elif AI_score > Player_score:
+                label = myfont.render("AI wins!!", 2, BLUE)
+                screen.blit(label, (40, 10))
+            else:
+                label = myfont.render("You win!!", 2, BLUE)
+                screen.blit(label, (40, 10))
+            pygame.display.update()
             game_over = True
-    if game_over:
+    if game_over:    
         pygame.time.wait(3000)
