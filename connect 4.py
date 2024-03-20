@@ -8,7 +8,19 @@ import copy
 import networkx as nx
 import matplotlib.pyplot as plt
 import graphviz
+class TreeNode:
+    def __init__(self, value):
+        self.value = value
+        self.children = []
 
+def pretty_print_tree(root, level=0, prefix="Root: "):
+    if root is not None:
+        print("  " * (level * 4) + prefix + str(root.value))
+        for child_index, child in enumerate(root.children):
+            if child_index == len(root.children) - 1:
+                pretty_print_tree(child, level + 1, "L-- ")
+            else:
+                pretty_print_tree(child, level + 1, "|-- ")
 BLUE = (0, 0, 255)
 BLACK = (0, 0, 0)
 RED = (255, 0, 0)
@@ -16,14 +28,14 @@ YELLOW = (255, 255, 0)
 
 ROW_COUNT = 6
 COLUMN_COUNT = 7
-DEPTH = 6
+DEPTH = 2
 PLAYER = 0
 AI = 1
 tree=[[]for i in range(DEPTH+1)]
 EMPTY = 0
 PLAYER_PIECE = 1
 AI_PIECE = 2
-
+ROOT=TreeNode(0)
 WINDOW_LENGTH = 4
 
 
@@ -304,14 +316,23 @@ def generateChildrenWithCol(board, piece):
             cols.append(col)
     return children,cols
 
-def expectiMinMax(alpha, beta, depth, board, player):
+def expectiMinMax(alpha, beta, depth, board, player,baba):
+    baby=None
     if isFull(board):
         PLAYER_Score = CalculateUtilityPiece(board, PLAYER_PIECE)
         AIScore = CalculateUtilityPiece(board, AI_PIECE)
         score = AIScore - PLAYER_Score
         return score, board  # Return score and board
 
+    if DEPTH==depth:
+        baby=ROOT
+    else:
+        val = "h"
+        baby = TreeNode(val)
+        baba.children.append(baby)
     if depth == 0:
+        c = evaluation(board)
+        baby.value = f"leave {c}"
         return evaluation(board), board
     if player == 1:  # maximizing player
 
@@ -321,16 +342,15 @@ def expectiMinMax(alpha, beta, depth, board, player):
         i = 0
         maxCol=0
         for child in children:
-            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER)
+            utility, _ = expectiMinMax(alpha, beta, depth - 1, child, PLAYER,baby)
             tree[DEPTH - depth + 1].append((utility, len(tree[DEPTH - depth]) - 1))
             if utility > maxUtility:
                 maxUtility = utility
+                baby.value = f"max node = {maxUtility}"
                 maxChild = child  # Update the best child board
                 maxCol=columns[i]
             if alpha < maxUtility:
                 alpha = maxUtility
-            if alpha >= beta:
-                break
             i+=1
         rightColumnProb=0.2# choose according to probablites not optimal choice like normal minmax
         predictedProb=0.6
@@ -349,11 +369,13 @@ def expectiMinMax(alpha, beta, depth, board, player):
                 if (is_valid_location(board, 0)):
                     r = get_next_open_row(board, 0)
                     maxChild=drop_piece(board, r, 0, AI_PIECE)
+                    baby.value = f"left {evaluation(maxChild)}"
                     break
             elif (chosen == 'C'):
                 if (is_valid_location(board, COLUMN_COUNT - 1)):
                     r = get_next_open_row(board, COLUMN_COUNT - 1)
                     maxChild=drop_piece(board, r, COLUMN_COUNT - 1, AI_PIECE)
+                    baby.value = f"right {evaluation(maxChild)}"
                     break
             else:
                 break
@@ -362,20 +384,20 @@ def expectiMinMax(alpha, beta, depth, board, player):
     else:
             minUtility = float('inf')
             minChild = None  # Keep track of the best child board
-            children,columns = generateChildren(board, PLAYER_PIECE)
+            children,columns = generateChildrenWithCol(board, PLAYER_PIECE)
             minCol=0
             i=0
             for child in children:
-                utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI)
+                utility, _ = expectiMinMax(alpha, beta, depth - 1, child, AI,baby)
                 tree[DEPTH - depth + 1].append((utility, len(tree[DEPTH - depth]) - 1))
                 if utility < minUtility:
                     minUtility = utility
+                    baby.value = f"min node = {minUtility}"
                     minCol= columns[i]
                     minChild = child  # Update the best child board
                 if minUtility < beta:
                     beta = minUtility
-                if alpha >= beta:
-                    break
+
                 i+=1
             rightColumnProb = 0.2# choose according to probablites not optimal choice like normal minmax
             predictedProb = 0.6
@@ -394,11 +416,13 @@ def expectiMinMax(alpha, beta, depth, board, player):
                     if (is_valid_location(board, 0)):
                         r = get_next_open_row(board, 0)
                         minChild = drop_piece(board, r, 0, PLAYER_PIECE)
+                        baby.value = f"left {evaluation(minChild)}"
                         break
                 elif (chosen == 'C'):
                     if (is_valid_location(board, COLUMN_COUNT - 1)):
                         r = get_next_open_row(board, COLUMN_COUNT - 1)
                         minChild = drop_piece(board, r, COLUMN_COUNT - 1, PLAYER_PIECE)
+                        baby.value = f"right {evaluation(minChild)}"
                         break
                 else:
 
@@ -407,26 +431,35 @@ def expectiMinMax(alpha, beta, depth, board, player):
             return minUtility, minChild
 
 
-def minMax(alpha, beta, depth, board, player):
-
+def minMax(alpha, beta, depth, board, player,baba):
+    baby=None
     if isFull(board):
         PLAYER_Score = CalculateUtilityPiece(board, PLAYER_PIECE)
         AIScore = CalculateUtilityPiece(board, AI_PIECE)
         score = AIScore - PLAYER_Score
         return score, board  # Return score and board
-
+    if DEPTH==depth:
+        baby=ROOT
+    else:
+        val = "h"
+        baby = TreeNode(val)
+        baba.children.append(baby)
     if depth == 0:
-        return evaluation(board), board
+        c=evaluation(board)
+        baby.value=f"leave {c}"
+        return c, board
 
     if player == 1:  # maximizing player
         maxUtility = -float('inf')
         maxChild = None  # Keep track of the best child board
         children = generateChildren(board, AI_PIECE)
         for child in children:
-            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER)
+            utility, _ = minMax(alpha, beta, depth - 1, child, PLAYER,baby)
             tree[DEPTH - depth + 1].append((utility, _))
+
             if utility > maxUtility:
                 maxUtility = utility
+                baby.value=f"max node = {maxUtility}"
                 maxChild = child  # Update the best child board
             if alpha < maxUtility:
                 alpha = maxUtility
@@ -437,25 +470,33 @@ def minMax(alpha, beta, depth, board, player):
         minChild = None  # Keep track of the best child board
         children = generateChildren(board, PLAYER_PIECE)
         for child in children:
-            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI)
+            utility, _ = minMax(alpha, beta, depth - 1, child, AI,baby)
             tree[DEPTH - depth + 1].append((utility, _))
             if utility < minUtility:
                 minUtility = utility
+                baby.value=f"min node = {minUtility}"
                 minChild = child  # Update the best child board
             if minUtility < beta:
                 beta = minUtility
         return minUtility, minChild
 
 
-def minMaxAlphaBeta(alpha, beta, depth, board, player):
-
+def minMaxAlphaBeta(alpha, beta, depth, board, player,baba):
+    baby=None
     if isFull(board):
         PLAYER_Score = CalculateUtilityPiece(board, PLAYER_PIECE)
         AIScore = CalculateUtilityPiece(board, AI_PIECE)
         score = AIScore - PLAYER_Score
         return score, board  # Return score and board
-
+    if DEPTH==depth:
+        baby=ROOT
+    else:
+        val = "h"
+        baby = TreeNode(val)
+        baba.children.append(baby)
     if depth == 0:
+        c = evaluation(board)
+        baby.value = f"leave {c}"
         return evaluation(board), board
     if player == 1:  # maximizing player
 
@@ -464,10 +505,11 @@ def minMaxAlphaBeta(alpha, beta, depth, board, player):
         children = generateChildren(board, AI_PIECE)
         i=0
         for child in children:
-            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER)
+            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER,baby)
             tree[DEPTH - depth + 1].append((utility,len(tree[DEPTH - depth] )-1 ))
             if utility > maxUtility:
                 maxUtility = utility
+                baby.value = f"max node = {maxUtility}"
                 maxChild = child  # Update the best child board
             if alpha < maxUtility:
                 alpha = maxUtility
@@ -480,10 +522,11 @@ def minMaxAlphaBeta(alpha, beta, depth, board, player):
         minChild = None  # Keep track of the best child board
         children = generateChildren(board, PLAYER_PIECE)
         for child in children:
-            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI)
+            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI,baby)
             tree[DEPTH - depth + 1].append((utility, len(tree[DEPTH - depth]) - 1))
             if utility < minUtility:
                 minUtility = utility
+                baby.value = f"min node = {minUtility}"
                 minChild = child  # Update the best child board
             if minUtility < beta:
                 beta = minUtility
@@ -631,8 +674,11 @@ while not game_over:
                     turn = AI
             # # Ask for Player 2 Input
         if turn == AI and not game_over:
-            time.sleep(1)
-            sc, a = func(float('-inf'), float('inf'), DEPTH, board, AI)
+            ROOT.children=[]
+
+            sc, a = func(float('-inf'), float('inf'), DEPTH, board, AI,ROOT)
+            pretty_print_tree(ROOT)
+
             tree[0].append((sc,None))
             #draw tree
 
