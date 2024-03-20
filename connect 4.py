@@ -1,5 +1,4 @@
 import time
-
 import numpy as np
 import random
 import pygame
@@ -123,24 +122,29 @@ def isFull(board):
 def CalculateUtilityPiece(board, piece):
     score = 0
     # Check horizontal locations for win
+    finished_row = -1
     for r in range(ROW_COUNT):
-        for c in range(COLUMN_COUNT - 6):
-            length = 0
-            while (c + length < 7 and board[r][c + length] == piece):
-                length += 1
-            c += length
-            if length > 3:
-                score += length - 3
-
+        for c in range(COLUMN_COUNT - 3):
+            if r == finished_row:
+                continue
+            else:
+                for length in range(7,3,-1):
+                    if all(r != finished_row and c + i < 7 and board[r][c + i] == piece for i
+                                in range(length)):
+                        score += length - 3
+                        finished_row = r
     # Check vertical locations for win
-    for r in range(ROW_COUNT - 5):
+    finished_col = -1
+    for r in range(ROW_COUNT - 3):
         for c in range(COLUMN_COUNT):
-            length = 0
-            while (r + length < 6 and board[r + length][c] == piece):
-                length += 1
-            r += length
-            if length > 3:
-                score += length - 3
+            if c == finished_col:
+                continue
+            else:
+                for length in range(7,3,-1):
+                    if all(c != finished_col and r + i  < 6 and board[r + i][c] == piece for i
+                                in range(length)):
+                        score += length - 3
+                        finished_col = c                    
 
     # Check positively sloped diaganols
     pos_indcies = []
@@ -150,31 +154,21 @@ def CalculateUtilityPiece(board, piece):
                 continue
             else:
                 for length in range(6, 3, -1):
-
                     if all(r - c not in pos_indcies and r + i < 6 and c + i < 7 and board[r + i][c + i] == piece for i
                            in range(length)):
-                        print(f'length = {length},r = {r} and c = {c}')
-                        print(f'before = {score}')
                         score += length - 3
-                        length = 3
                         pos_indcies.append(r - c)
     # check negatively sloped diagonals
     neg_indices = []
-    print('negative slope:')
     for r in range(ROW_COUNT - 1, 2, -1):
         for c in range(COLUMN_COUNT - 3):
             if r + c in neg_indices:
                 continue
             else:
-
-                if c == 3:
-                    print('hi')
                 for length in range(6, 3, -1):
                     if all(r + c not in neg_indices and r - i < 6 and c + i < 7 and board[r - i][c + i] == piece for i
                            in range(length)):
-                        print(f'length = {length},r = {r} and c = {c}')
                         score += length - 3
-                        length = 3
                         neg_indices.append(r + c)
     return score
 def detectVertical(board,piece):
