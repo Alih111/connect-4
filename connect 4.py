@@ -17,7 +17,7 @@ YELLOW = (255, 255, 0)
 
 ROW_COUNT = 6
 COLUMN_COUNT = 7
-DEPTH = 3
+DEPTH = 6
 PLAYER = 0
 AI = 1
 tree=[[]for i in range(DEPTH+1)]
@@ -177,12 +177,82 @@ def CalculateUtilityPiece(board, piece):
                         length = 3
                         neg_indices.append(r + c)
     return score
+def detectVertical(board,piece):
+    counts = []
+    score = 0
+    for i in range(COLUMN_COUNT):
+        c=0
+        for j in range(ROW_COUNT):
+            a=board[j][i]
+            if a==piece:
+                c+=1
+            elif a==0:
+                break
+            else:
+                if c > 3:
+                    break
+                else:
+                    c=0
+                    if ROW_COUNT-j<4:
+                        break
+        counts.append(c)
+    for c in counts:
+        if c == 2:
+            score += 1 * 2
+        elif c == 3:
+            score += 1 * 4
+        elif c == 4:
+            score += 1 * 8
+        elif c == 5:
+            score += 1 * 16
+        elif c == 6:
+            score += 1 * 24
+    return score
+def detectHorizontal(board,piece):
+    counts=[]
+    score=0
+    for i in range(ROW_COUNT):
+        c=0
+        zerosbet=0
+        for j in range (COLUMN_COUNT):
+            if board[i][j]==0:
+                zerosbet+=1
+                continue
+            elif board[i][j]==piece:
+                if(j%3==0):
+                    score+=1
+                c+=1
+            else:
+                if c<4:
+                    c=0
+                counts.append(c)
+                if COLUMN_COUNT-j<4:
+                    break
+                c=0
+        counts.append(c)
+    i=0
+    for c in counts:
+        if c==2:
+            score+=1*2
 
+        elif c==3:
+            score+=1*4
 
+        elif c==4:
+            score+=1*10
+        elif c==5:
+            score+=1*20
+        elif c==6:
+            score+=1*30
+        elif c==7:
+            score+=1*40
+        i+=1
+    return score
 def evaluation(board):
-    if board[0][2] == 2:
-        return 2
-    return 1
+    a=detectHorizontal(board,AI_PIECE)+detectVertical(board,AI_PIECE)
+    b = detectHorizontal(board, PLAYER_PIECE)+detectVertical(board, PLAYER_PIECE)
+    return a-b
+
 
 
 def generateChildren(board, piece):
@@ -193,29 +263,118 @@ def generateChildren(board, piece):
             row = get_next_open_row(tempBoard, col)
             children.append(drop_piece(tempBoard, row, col, piece))
     return children
-
+def generateChildrenWithCol(board, piece):
+    children = []
+    cols=[]
+    for col in range(COLUMN_COUNT):
+        tempBoard = copy.deepcopy(board)
+        if is_valid_location(tempBoard, col):
+            row = get_next_open_row(tempBoard, col)
+            children.append(drop_piece(tempBoard, row, col, piece))
+            cols.append(col)
+    return children,cols
 
 def expectiMinMax(alpha, beta, depth, board, player):
-    score = 0
-    a = copy.deepcopy(board)
-    while (1):
-        choices = ['A', 'B', 'C']
-        probabilities = [0.2, 0.6, 0.2]  # Probabilities must sum up to 1
-        chosen = random.choices(choices, weights=probabilities, k=1)[0]
-        if (chosen == 'A'):
-            if (is_valid_location(a, 0)):
-                r = get_next_open_row(a, 0)
-                drop_piece(a, r, 0, AI_PIECE)
+    if isFull(board):
+        PLAYER_Score = CalculateUtilityPiece(board, PLAYER_PIECE)
+        AIScore = CalculateUtilityPiece(board, AI_PIECE)
+        score = AIScore - PLAYER_Score
+        return score, board  # Return score and board
+
+    if depth == 0:
+        return evaluation(board), board
+    if player == 1:  # maximizing player
+
+        maxUtility = -float('inf')
+        maxChild = None  # Keep track of the best child board
+        children,columns = generateChildrenWithCol(board, AI_PIECE)
+        i = 0
+        maxCol=0
+        for child in children:
+            utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER)
+            tree[DEPTH - depth + 1].append((utility, len(tree[DEPTH - depth]) - 1))
+            if utility > maxUtility:
+                maxUtility = utility
+                maxChild = child  # Update the best child board
+                maxCol=columns[i]
+            if alpha < maxUtility:
+                alpha = maxUtility
+            if alpha >= beta:
                 break
-        elif (chosen == 'C'):
-            if (is_valid_location(a, COLUMN_COUNT - 1)):
-                r = get_next_open_row(a, COLUMN_COUNT - 1)
-                drop_piece(a, r, COLUMN_COUNT - 1, AI_PIECE)
+            i+=1
+        rightColumnProb=0.2# choose according to probablites not optimal choice like normal minmax
+        predictedProb=0.6
+        leftColumnProb=0.2
+        if maxCol==0:
+            leftColumnProb = 0
+            rightColumnProb=0.4
+        elif maxCol==COLUMN_COUNT-1:
+            rightColumnProb=0
+            leftColumnProb=0.4
+        while (1):
+            choices = ['A', 'B', 'C']
+            probabilities = [leftColumnProb, predictedProb, rightColumnProb]  # Probabilities must sum up to 1
+            chosen = random.choices(choices, weights=probabilities, k=1)[0]
+            if (chosen == 'A'):
+                if (is_valid_location(board, 0)):
+                    r = get_next_open_row(board, 0)
+                    maxChild=drop_piece(board, r, 0, AI_PIECE)
+                    break
+            elif (chosen == 'C'):
+                if (is_valid_location(board, COLUMN_COUNT - 1)):
+                    r = get_next_open_row(board, COLUMN_COUNT - 1)
+                    maxChild=drop_piece(board, r, COLUMN_COUNT - 1, AI_PIECE)
+                    break
+            else:
                 break
-        else:
-            score, a = minMaxAlphaBeta(alpha, beta, depth, board, player)
-            break
-    return score, a
+        return maxUtility, maxChild  # Return the best utility and its corresponding board
+
+    else:
+            minUtility = float('inf')
+            minChild = None  # Keep track of the best child board
+            children,columns = generateChildren(board, PLAYER_PIECE)
+            minCol=0
+            i=0
+            for child in children:
+                utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI)
+                tree[DEPTH - depth + 1].append((utility, len(tree[DEPTH - depth]) - 1))
+                if utility < minUtility:
+                    minUtility = utility
+                    minCol= columns[i]
+                    minChild = child  # Update the best child board
+                if minUtility < beta:
+                    beta = minUtility
+                if alpha >= beta:
+                    break
+                i+=1
+            rightColumnProb = 0.2# choose according to probablites not optimal choice like normal minmax
+            predictedProb = 0.6
+            leftColumnProb = 0.2
+            if minCol == 0:
+                leftColumnProb = 0
+                rightColumnProb = 0.4
+            elif minCol == COLUMN_COUNT - 1:
+                rightColumnProb = 0
+                leftColumnProb = 0.4
+            while (1):
+                choices = ['A', 'B', 'C']
+                probabilities = [leftColumnProb, predictedProb, rightColumnProb]  # Probabilities must sum up to 1
+                chosen = random.choices(choices, weights=probabilities, k=1)[0]
+                if (chosen == 'A'):
+                    if (is_valid_location(board, 0)):
+                        r = get_next_open_row(board, 0)
+                        minChild = drop_piece(board, r, 0, PLAYER_PIECE)
+                        break
+                elif (chosen == 'C'):
+                    if (is_valid_location(board, COLUMN_COUNT - 1)):
+                        r = get_next_open_row(board, COLUMN_COUNT - 1)
+                        minChild = drop_piece(board, r, COLUMN_COUNT - 1, PLAYER_PIECE)
+                        break
+                else:
+
+                    break
+
+            return minUtility, minChild
 
 
 def minMax(alpha, beta, depth, board, player):
@@ -276,7 +435,7 @@ def minMaxAlphaBeta(alpha, beta, depth, board, player):
         i=0
         for child in children:
             utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, PLAYER)
-            tree[DEPTH - depth + 1].append((utility, ))
+            tree[DEPTH - depth + 1].append((utility,len(tree[DEPTH - depth] )-1 ))
             if utility > maxUtility:
                 maxUtility = utility
                 maxChild = child  # Update the best child board
@@ -292,7 +451,7 @@ def minMaxAlphaBeta(alpha, beta, depth, board, player):
         children = generateChildren(board, PLAYER_PIECE)
         for child in children:
             utility, _ = minMaxAlphaBeta(alpha, beta, depth - 1, child, AI)
-            tree[DEPTH - depth + 1].append((utility, _))
+            tree[DEPTH - depth + 1].append((utility, len(tree[DEPTH - depth]) - 1))
             if utility < minUtility:
                 minUtility = utility
                 minChild = child  # Update the best child board
@@ -302,23 +461,36 @@ def minMaxAlphaBeta(alpha, beta, depth, board, player):
                 break
 
         return minUtility, minChild
-def get_total_elements(list_of_lists):
-  total_elements = 0
-  for inner_list in list_of_lists:
-    total_elements += len(inner_list)
-  return total_elements
+
 def drawTREE():
-    G = nx.BiGraph()
+    G = nx.DiGraph()
     pos = {}
     j = 0
     wid = 0
-    for i in range(get_total_elements(tree)):
+    for i in range(DEPTH * 7 + 1):
         wid += 1
         pos[i] = (10 * j, 15 * wid)
         if (i % 7 == 0):
             j += 2
             wid = 0
 
+    color1 = 'red'
+    j=0
+    i=0
+    m=0
+    len1=0
+    for i in range(len(tree)):
+        for j in  range(len(tree[i])):
+            a=tree[i][j]
+            G.add_node(m,color=color1,label=f"{j}/ {i}/ {a[0]}")
+            if(a[1] is not None):
+                G.add_edge(len1+a[1],m)
+        if color1=='red':
+            color1='blue'
+        else:
+            color1='red'
+            m+=1
+        len1 += len(tree[i]) - 1
 
 
 pygame.init()
@@ -432,8 +604,9 @@ while not game_over:
             time.sleep(1)
 
             sc, a = func(float('-inf'), float('inf'), DEPTH, board, AI)
-            tree[0].append((sc,a))
+            tree[0].append((sc,None))
             #draw tree
+            drawTREE()
             print(f"ai score ={CalculateUtilityPiece(board,AI_PIECE)} human score = {CalculateUtilityPiece(board,PLAYER_PIECE)}")
             tree = [[] for i in range(DEPTH + 1)]
             board = a
