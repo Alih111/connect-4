@@ -171,6 +171,45 @@ def CalculateUtilityPiece(board, piece):
                         score += length - 3
                         neg_indices.append(r + c)
     return score
+def detectDiagonal(board, piece, direction):
+    score = 0
+    # Define offsets based on the direction
+    if direction == 'up':
+        offsets = [(1, -1), (2, -2), (3, -3), (4, -4),(5,-5)]
+    else:
+        offsets = [(-1, 1), (-2, 2), (-3, 3), (-4, 4),(-5,5)]
+
+    for i in range(ROW_COUNT):
+        for j in range(COLUMN_COUNT):
+            if board[i][j] != piece:
+                continue
+            # Check for a diagonal line of the specified piece
+            valid_count = 1
+            for offset in offsets:
+                row, col = i + offset[0], j + offset[1]
+                if 0 <= row < ROW_COUNT and 0 <= col < COLUMN_COUNT and board[row][col] != 0 and board[row][col] != piece and valid_count < 4 :
+                    valid_count=0
+                    break
+                if 0 <= row < ROW_COUNT and 0 <= col < COLUMN_COUNT and (board[row][col] == piece or (board[row][col] == 0 and board[row-1][col] !=0 )):
+                    if board[row][col]==piece:
+                        valid_count += 1
+                else:
+                    break
+            # Calculate score based on the length of the diagonal line
+            if valid_count >= 2:
+                if valid_count == 2:
+                    score += 1 * 2
+                elif valid_count == 3:
+                    score += 1 * 4
+                elif valid_count == 4:
+                    score += 1 * 15
+                elif valid_count == 5:
+                    score += 1 * 30
+                elif valid_count == 6:
+                    score += 1 * 45
+                elif valid_count == 7:
+                    score += 1 * 60
+    return score
 def detectVertical(board,piece):
     counts = []
     score = 0
@@ -182,7 +221,7 @@ def detectVertical(board,piece):
                 c+=1
             elif a==0:
                 break
-            else:
+            else:# opponent piece found
                 if c > 3:
                     break
                 else:
@@ -192,32 +231,30 @@ def detectVertical(board,piece):
         counts.append(c)
     for c in counts:
         if c == 2:
-            score += 1 * 2
+            score += 1*3
         elif c == 3:
-            score += 1 * 4
+            score += 1 * 5
         elif c == 4:
-            score += 1 * 8
+            score += 1 * 20
         elif c == 5:
-            score += 1 * 16
+            score += 1 * 40
         elif c == 6:
-            score += 1 * 24
+            score += 1 * 60
     return score
 def detectHorizontal(board,piece):
     counts=[]
     score=0
     for i in range(ROW_COUNT):
         c=0
-        zerosbet=0
         for j in range (COLUMN_COUNT):
             if board[i][j]==0:
-                zerosbet+=1
                 continue
             elif board[i][j]==piece:
-                if(j%3==0):
-                    score+=1
+                if(j==3):
+                    score+=2
                 c+=1
             else:
-                if c<4:
+                if i<4:
                     c=0
                 counts.append(c)
                 if COLUMN_COUNT-j<4:
@@ -227,24 +264,24 @@ def detectHorizontal(board,piece):
     i=0
     for c in counts:
         if c==2:
-            score+=1*2
+            score+=1*3
 
         elif c==3:
-            score+=1*4
+            score+=1*5
 
         elif c==4:
-            score+=1*10
-        elif c==5:
             score+=1*20
-        elif c==6:
-            score+=1*30
-        elif c==7:
+        elif c==5:
             score+=1*40
+        elif c==6:
+            score+=1*60
+        elif c==7:
+            score+=1*80
         i+=1
     return score
 def evaluation(board):
-    a=detectHorizontal(board,AI_PIECE)+detectVertical(board,AI_PIECE)
-    b = detectHorizontal(board, PLAYER_PIECE)+detectVertical(board, PLAYER_PIECE)
+    a=detectHorizontal(board,AI_PIECE)+detectVertical(board,AI_PIECE)+detectDiagonal(board,AI_PIECE,"up")+detectDiagonal(board,AI_PIECE,"down")
+    b = 1.2*(detectHorizontal(board, PLAYER_PIECE)+detectVertical(board, PLAYER_PIECE)+detectDiagonal(board,PLAYER_PIECE,"up")+detectDiagonal(board,PLAYER_PIECE,"down"))
     return a-b
 
 
@@ -600,7 +637,7 @@ while not game_over:
             sc, a = func(float('-inf'), float('inf'), DEPTH, board, AI)
             tree[0].append((sc,None))
             #draw tree
-            drawTREE()
+
             print(f"ai score ={CalculateUtilityPiece(board,AI_PIECE)} human score = {CalculateUtilityPiece(board,PLAYER_PIECE)}")
             tree = [[] for i in range(DEPTH + 1)]
             board = a
